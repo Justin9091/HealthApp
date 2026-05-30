@@ -25,7 +25,6 @@ import { useFitnessSummary } from '../hooks/useFitness';
 import { useDailyHealthSummary } from '../hooks/useGoogleHealth';
 import { colors, spacing, radius, shadow } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
-import { todayStr } from '../utils/helpers';
 import {
   format,
   addDays,
@@ -37,7 +36,6 @@ import {
   isSameMonth,
   isSameDay,
   isAfter,
-  parseISO,
 } from 'date-fns';
 import { nl } from 'date-fns/locale';
 import { queryKeys } from '../utils/queryKeys';

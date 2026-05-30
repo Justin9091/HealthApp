@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { pct } from '../utils/helpers';
-import { colors, radius } from '../constants/theme';
+import { colors } from '../constants/theme';
 
 interface Props {
   label: string;

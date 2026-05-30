@@ -79,34 +79,6 @@ function categoryStats(achievements: Achievement[]) {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function GoogleSignInButton({
-  onPress,
-  loading,
-}: {
-  onPress: () => void;
-  loading: boolean;
-}) {
-  const { theme } = useTheme();
-  const s = useStyles();
-  return (
-    <TouchableOpacity
-      style={s.googleBtn}
-      onPress={onPress}
-      disabled={loading}
-      activeOpacity={0.85}
-    >
-      {loading ? (
-        <ActivityIndicator color={theme.text} />
-      ) : (
-        <>
-          <Text style={s.googleLogo}>G</Text>
-          <Text style={s.googleBtnText}>Inloggen met Google</Text>
-        </>
-      )}
-    </TouchableOpacity>
-  );
-}
-
 function LoginCard({ onSignIn }: { onSignIn: () => void }) {
   const { theme } = useTheme();
   const [loading, setLoading] = useState(false);

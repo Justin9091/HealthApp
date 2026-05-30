@@ -17,7 +17,6 @@ import { HistoryScreen } from '../screens/HistoryScreen';
 import { WeeklyReportScreen } from '../screens/WeeklyReportScreen';
 import { DailyReportScreen } from '../screens/DailyReportScreen';
 import { OnboardingScreen } from '../screens/OnboardingScreen';
-import { shadow } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
 import { Routes, MainStackParamList, TabParamList } from '../constants/routes';
 
