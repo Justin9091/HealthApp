@@ -48,22 +48,22 @@ export function MacroBar({ label, value, target, unit, color }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { gap: 6 },
+  container: { gap: 8 },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   labelRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  dot: { width: 8, height: 8, borderRadius: 4 },
-  label: { fontSize: 14, color: colors.textSecondary, fontWeight: '600' },
-  value: { fontSize: 13, color: colors.text, fontWeight: '700' },
+  dot: { width: 10, height: 10, borderRadius: 5 },
+  label: { fontSize: 14, color: colors.textSecondary, fontWeight: '700' },
+  value: { fontSize: 14, color: colors.text, fontWeight: '800' },
   unit: { fontWeight: '400', color: colors.textMuted, fontSize: 12 },
   track: {
-    height: 8,
+    height: 12,
+    borderRadius: 6,
     backgroundColor: colors.surfaceAlt,
-    borderRadius: radius.full,
     overflow: 'hidden',
   },
-  fill: { height: '100%', borderRadius: radius.full },
+  fill: { height: '100%', borderRadius: 6 },
 });

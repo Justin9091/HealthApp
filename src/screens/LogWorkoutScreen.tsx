@@ -19,9 +19,11 @@ import {
 } from '../hooks/useFitness';
 import { WorkoutEntry, WorkoutType } from '../types';
 import { fitnessService } from '../services/FitnessService';
-import { colors, spacing, radius, shadow } from '../constants/theme';
+import { spacing, radius, shadow } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
 import { formatTime, todayStr } from '../utils/helpers';
+import Icon from 'react-native-vector-icons/Ionicons';
+import { Card, FormField as UIFormField, PrimaryButton, inputStyle } from '../components/ui';
 
 const WORKOUT_TYPES: WorkoutType[] = [
   'running',
@@ -50,17 +52,18 @@ export function LogWorkoutScreen() {
         scroll: { flex: 1 },
         content: { padding: spacing.md, gap: spacing.md },
         sectionTitle: {
-          fontSize: 16,
-          fontWeight: '700',
+          fontSize: 20,
+          fontWeight: '900',
+          letterSpacing: -0.5,
           color: theme.text,
           marginBottom: spacing.sm,
         },
         typeScroll: { marginBottom: spacing.sm },
         typeChip: {
           backgroundColor: theme.surface,
-          borderRadius: radius.xl,
+          borderRadius: radius.full,
           paddingHorizontal: spacing.md,
-          paddingVertical: spacing.sm,
+          paddingVertical: 10,
           marginRight: spacing.sm,
           borderWidth: 2,
           borderColor: 'transparent',
@@ -73,13 +76,13 @@ export function LogWorkoutScreen() {
         typeLabel: {
           fontSize: 13,
           color: theme.textSecondary,
-          fontWeight: '500',
+          fontWeight: '600',
         },
         typeLabelActive: { color: theme.secondary, fontWeight: '700' },
         card: {
           backgroundColor: theme.surface,
-          borderRadius: radius.lg,
-          padding: spacing.md,
+          borderRadius: radius.xl,
+          padding: spacing.lg,
           ...shadow.sm,
         },
         row: { flexDirection: 'row', gap: spacing.sm },
@@ -101,13 +104,13 @@ export function LogWorkoutScreen() {
         textArea: { minHeight: 80, textAlignVertical: 'top' },
         submitBtn: {
           backgroundColor: theme.secondary,
-          borderRadius: radius.md,
-          padding: spacing.md,
+          borderRadius: radius.full,
+          paddingVertical: 16,
           alignItems: 'center',
           marginTop: spacing.sm,
         },
         submitBtnDisabled: { opacity: 0.6 },
-        submitText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+        submitText: { color: '#fff', fontWeight: '800', fontSize: 17, letterSpacing: 0.2 },
         workoutRow: {
           flexDirection: 'row',
           alignItems: 'center',
@@ -116,8 +119,8 @@ export function LogWorkoutScreen() {
           borderBottomColor: theme.border,
         },
         workoutInfo: { flex: 1 },
-        workoutName: { fontSize: 14, fontWeight: '600', color: theme.text },
-        workoutMeta: { fontSize: 12, color: theme.textSecondary, marginTop: 2 },
+        workoutName: { fontSize: 15, fontWeight: '700', color: theme.text },
+        workoutMeta: { fontSize: 13, color: theme.textSecondary, marginTop: 2 },
         workoutNotes: {
           fontSize: 12,
           color: theme.textMuted,
@@ -125,7 +128,7 @@ export function LogWorkoutScreen() {
           fontStyle: 'italic',
         },
         deleteBtn: { padding: spacing.sm },
-        deleteText: { color: colors.danger, fontSize: 16, fontWeight: '700' },
+        deleteText: { color: theme.danger, fontSize: 16, fontWeight: '700' },
       }),
     [theme],
   );
@@ -203,50 +206,42 @@ export function LogWorkoutScreen() {
           </ScrollView>
 
           {/* Form */}
-          <View style={styles.card}>
+          <Card style={{ gap: spacing.xs }}>
             <Text style={styles.sectionTitle}>Training toevoegen</Text>
 
             <form.Field name="name">
               {field => (
-                <FormField label="Naam *" styles={styles}>
+                <UIFormField label="Naam" required>
                   <TextInput
-                    style={styles.input}
+                    style={inputStyle(theme)}
                     placeholder="bijv. Ochtendrun"
                     placeholderTextColor={theme.textMuted}
                     value={field.state.value}
                     onChangeText={field.handleChange}
                   />
-                </FormField>
+                </UIFormField>
               )}
             </form.Field>
 
             <View style={styles.row}>
               <form.Field name="durationMinutes">
                 {field => (
-                  <FormField
-                    label="Duur (min) *"
-                    style={{ flex: 1 }}
-                    styles={styles}
-                  >
+                  <UIFormField label="Duur (min)" required style={{ flex: 1 }}>
                     <TextInput
-                      style={styles.input}
+                      style={inputStyle(theme)}
                       placeholder="min"
                       keyboardType="numeric"
                       placeholderTextColor={theme.textMuted}
                       value={field.state.value}
                       onChangeText={field.handleChange}
                     />
-                  </FormField>
+                  </UIFormField>
                 )}
               </form.Field>
 
               <form.Field name="caloriesBurned">
                 {field => (
-                  <FormField
-                    label="Kcal verbrand"
-                    style={{ flex: 1 }}
-                    styles={styles}
-                  >
+                  <UIFormField label="Kcal verbrand" style={{ flex: 1 }}>
                     <TextInput
                       style={styles.input}
                       placeholder="auto"
@@ -255,7 +250,7 @@ export function LogWorkoutScreen() {
                       value={field.state.value}
                       onChangeText={field.handleChange}
                     />
-                  </FormField>
+                  </UIFormField>
                 )}
               </form.Field>
             </View>
@@ -263,48 +258,40 @@ export function LogWorkoutScreen() {
             <View style={styles.row}>
               <form.Field name="heartRateAvg">
                 {field => (
-                  <FormField
-                    label="Hartslag gem."
-                    style={{ flex: 1 }}
-                    styles={styles}
-                  >
+                  <UIFormField label="Hartslag gem." style={{ flex: 1 }}>
                     <TextInput
-                      style={styles.input}
+                      style={inputStyle(theme)}
                       placeholder="bpm"
                       keyboardType="numeric"
                       placeholderTextColor={theme.textMuted}
                       value={field.state.value}
                       onChangeText={field.handleChange}
                     />
-                  </FormField>
+                  </UIFormField>
                 )}
               </form.Field>
 
               <form.Field name="steps">
                 {field => (
-                  <FormField
-                    label="Stappen"
-                    style={{ flex: 1 }}
-                    styles={styles}
-                  >
+                  <UIFormField label="Stappen" style={{ flex: 1 }}>
                     <TextInput
-                      style={styles.input}
+                      style={inputStyle(theme)}
                       placeholder="stappen"
                       keyboardType="numeric"
                       placeholderTextColor={theme.textMuted}
                       value={field.state.value}
                       onChangeText={field.handleChange}
                     />
-                  </FormField>
+                  </UIFormField>
                 )}
               </form.Field>
             </View>
 
             <form.Field name="notes">
               {field => (
-                <FormField label="Notities" styles={styles}>
+                <UIFormField label="Notities">
                   <TextInput
-                    style={[styles.input, styles.textArea]}
+                    style={[inputStyle(theme), { minHeight: 80, textAlignVertical: 'top' }]}
                     placeholder="Optioneel..."
                     placeholderTextColor={theme.textMuted}
                     multiline
@@ -312,31 +299,25 @@ export function LogWorkoutScreen() {
                     value={field.state.value}
                     onChangeText={field.handleChange}
                   />
-                </FormField>
+                </UIFormField>
               )}
             </form.Field>
 
             <form.Subscribe selector={s => s.isSubmitting}>
               {isSubmitting => (
-                <TouchableOpacity
-                  style={[
-                    styles.submitBtn,
-                    isSubmitting && styles.submitBtnDisabled,
-                  ]}
+                <PrimaryButton
+                  label={isSubmitting ? 'Opslaan...' : 'Training toevoegen'}
                   onPress={form.handleSubmit}
-                  disabled={isSubmitting}
-                >
-                  <Text style={styles.submitText}>
-                    {isSubmitting ? 'Opslaan...' : '+ Training toevoegen'}
-                  </Text>
-                </TouchableOpacity>
+                  loading={isSubmitting}
+                  color={theme.secondary}
+                />
               )}
             </form.Subscribe>
-          </View>
+          </Card>
 
           {/* Logged workouts */}
           {workouts.length > 0 && (
-            <View style={styles.card}>
+            <Card>
               <Text style={styles.sectionTitle}>Vandaag gelogd</Text>
               {workouts.map(workout => (
                 <WorkoutRow
@@ -346,20 +327,11 @@ export function LogWorkoutScreen() {
                   onDelete={() => removeWorkout.mutate(workout.id)}
                 />
               ))}
-            </View>
+            </Card>
           )}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
-  );
-}
-
-function FormField({ label, children, style, styles }: any) {
-  return (
-    <View style={[{ marginBottom: spacing.sm }, style]}>
-      <Text style={styles.fieldLabel}>{label}</Text>
-      {children}
-    </View>
   );
 }
 
@@ -387,8 +359,8 @@ function WorkoutRow({
           <Text style={styles.workoutNotes}>{workout.notes}</Text>
         )}
       </View>
-      <TouchableOpacity onPress={onDelete} style={styles.deleteBtn}>
-        <Text style={styles.deleteText}>✕</Text>
+      <TouchableOpacity onPress={onDelete} style={styles.deleteBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+        <Icon name="trash-outline" size={18} color={styles.deleteText.color} />
       </TouchableOpacity>
     </View>
   );

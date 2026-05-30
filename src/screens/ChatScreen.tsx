@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -27,10 +27,22 @@ import {
 } from '../services/AIService';
 import { nutritionService } from '../services/NutritionService';
 import { fitnessService } from '../services/FitnessService';
+import { storageService } from '../services/StorageService';
+import { UserGoals, DEFAULT_GOALS } from '../types';
 import { colors, spacing, radius, shadow } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
 import { queryKeys } from '../utils/queryKeys';
 import { todayStr } from '../utils/helpers';
+
+const CHAT_HISTORY_KEY = 'chat:history';
+const MAX_STORED_MESSAGES = 30;
+
+const SUGGESTIONS = [
+  'Ontbijt loggen 🍳',
+  'Training toevoegen 💪',
+  'Hoeveel calorieën zitten er in pasta?',
+  'Water drinken 💧',
+];
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -406,10 +418,13 @@ export function ChatScreen() {
   const [loading, setLoading] = useState(false);
   const [showApiModal, setShowApiModal] = useState(false);
   const [hasApiKey, setHasApiKey] = useState<boolean | null>(null);
+  const [healthContext, setHealthContext] = useState<string | undefined>();
   const scrollRef = useRef<ScrollView>(null);
   const qc = useQueryClient();
   const today = todayStr();
   const insets = useSafeAreaInsets();
+
+  const hasUserMessages = messages.some(m => m.role === 'user');
 
   const styles = useMemo(
     () =>
@@ -497,6 +512,24 @@ export function ChatScreen() {
           fontWeight: '700',
           marginTop: -2,
         },
+        chipsContainer: {
+          paddingHorizontal: spacing.md,
+          paddingVertical: spacing.xs,
+          gap: 8,
+        },
+        chip: {
+          backgroundColor: theme.surfaceAlt,
+          borderRadius: radius.xl,
+          paddingHorizontal: 14,
+          paddingVertical: 8,
+          borderWidth: 1,
+          borderColor: theme.border,
+        },
+        chipText: {
+          fontSize: 13,
+          color: theme.text,
+          fontWeight: '500',
+        },
       }),
     [theme],
   );
@@ -554,6 +587,29 @@ export function ChatScreen() {
 
   useEffect(() => {
     aiService.getApiKey().then(k => setHasApiKey(!!k));
+
+    // Load persisted chat history
+    storageService.get<Message[]>(CHAT_HISTORY_KEY).then(saved => {
+      if (saved && saved.length > 0) {
+        setMessages([WELCOME, ...saved]);
+      }
+    });
+
+    // Build health context from today's data + user goals
+    Promise.all([
+      nutritionService.getSummary(todayStr()),
+      storageService.get<UserGoals>('user:goals'),
+    ]).then(([summary, goals]) => {
+      const g = goals ?? DEFAULT_GOALS;
+      const ctx =
+        `GEBRUIKERSCONTEXT VANDAAG (${todayStr()}): ` +
+        `Calorieën: ${Math.round(summary.totalCalories)}/${g.dailyCaloriesTarget} kcal, ` +
+        `Eiwit: ${Math.round(summary.totalProtein)}/${g.dailyProteinTarget}g, ` +
+        `Koolhydraten: ${Math.round(summary.totalCarbs)}/${g.dailyCarbsTarget}g, ` +
+        `Vet: ${Math.round(summary.totalFat)}/${g.dailyFatTarget}g. ` +
+        `Gebruik deze context alleen als het relevant is voor het gesprek.`;
+      setHealthContext(ctx);
+    });
   }, []);
 
   const scrollToBottom = () => {
@@ -614,6 +670,27 @@ export function ChatScreen() {
     setShowApiModal(false);
   };
 
+  const saveHistory = useCallback((msgs: Message[]) => {
+    const toSave = msgs
+      .filter(m => m.id !== 'welcome')
+      .slice(-MAX_STORED_MESSAGES);
+    storageService.set(CHAT_HISTORY_KEY, toSave);
+  }, []);
+
+  const clearChat = useCallback(() => {
+    Alert.alert('Chat wissen', 'Wil je de chatgeschiedenis verwijderen?', [
+      { text: 'Annuleren', style: 'cancel' },
+      {
+        text: 'Wissen',
+        style: 'destructive',
+        onPress: () => {
+          setMessages([WELCOME]);
+          storageService.set(CHAT_HISTORY_KEY, []);
+        },
+      },
+    ]);
+  }, []);
+
   const sendText = async (text: string) => {
     if (!text.trim() || loading) return;
     if (!hasApiKey) {
@@ -622,33 +699,33 @@ export function ChatScreen() {
     }
     setInput('');
     const userMsg: Message = { id: Date.now().toString(), role: 'user', text };
-    setMessages(prev => [...prev, userMsg]);
+    const nextMessages = [...messages, userMsg];
+    setMessages(nextMessages);
     setLoading(true);
     scrollToBottom();
     try {
       const history = messages
         .filter(m => m.role !== 'system' && m.id !== 'welcome')
-        .slice(-6)
         .map(m => ({ role: m.role as 'user' | 'assistant', content: m.text }));
-      const aiResp = await aiService.chat(text, history);
-      setMessages(prev => [
-        ...prev,
-        {
-          id: (Date.now() + 1).toString(),
-          role: 'assistant',
-          text: aiResp.message,
-          aiResponse: aiResp,
-        },
-      ]);
+      const aiResp = await aiService.chat(text, history, healthContext);
+      const assistantMsg: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        text: aiResp.message,
+        aiResponse: aiResp,
+      };
+      const finalMessages = [...nextMessages, assistantMsg];
+      setMessages(finalMessages);
+      saveHistory(finalMessages);
     } catch (err: any) {
-      setMessages(prev => [
-        ...prev,
-        {
-          id: Date.now().toString(),
-          role: 'assistant',
-          text: `Er ging iets mis: ${err.message}`,
-        },
-      ]);
+      const errorMsg: Message = {
+        id: Date.now().toString(),
+        role: 'assistant',
+        text: `Er ging iets mis: ${err.message}`,
+      };
+      const finalMessages = [...nextMessages, errorMsg];
+      setMessages(finalMessages);
+      saveHistory(finalMessages);
     } finally {
       setLoading(false);
       scrollToBottom();
@@ -665,14 +742,21 @@ export function ChatScreen() {
             Log voeding & trainingen met tekst
           </Text>
         </View>
-        <TouchableOpacity
-          style={styles.keyBtn}
-          onPress={() => setShowApiModal(true)}
-        >
-          <Text style={styles.keyBtnText}>
-            {hasApiKey ? '🔑 ✓' : '🔑 Instellen'}
-          </Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          {hasUserMessages && (
+            <TouchableOpacity style={styles.keyBtn} onPress={clearChat}>
+              <Text style={styles.keyBtnText}>🗑️</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            style={styles.keyBtn}
+            onPress={() => setShowApiModal(true)}
+          >
+            <Text style={styles.keyBtnText}>
+              {hasApiKey ? '🔑 ✓' : '🔑 Instellen'}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <KeyboardAvoidingView
@@ -789,6 +873,26 @@ export function ChatScreen() {
             </View>
           )}
         </ScrollView>
+
+        {/* Suggestion chips — shown only before first user message */}
+        {!hasUserMessages && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.chipsContainer}
+            keyboardShouldPersistTaps="handled"
+          >
+            {SUGGESTIONS.map(s => (
+              <TouchableOpacity
+                key={s}
+                style={styles.chip}
+                onPress={() => sendText(s)}
+              >
+                <Text style={styles.chipText}>{s}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
 
         {/* Input bar */}
         <View

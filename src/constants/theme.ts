@@ -1,40 +1,40 @@
 // ─── Design System ────────────────────────────────────────────────────────────
-// Palette: Clean white & light grey, with a vibrant coral + green accent
+// Palette: Vibrant lavender-violet primary + emerald wellness accent
 
 export const colors = {
   // Brand
-  primary: '#FF6B6B', // vivid coral
-  primaryLight: '#FFF0F0',
-  primaryDark: '#E04E4E',
-  secondary: '#4CAF82', // fresh green
-  secondaryLight: '#E8F8F0',
-  accent: '#F5A623', // warm orange
-  accentLight: '#FEF6E7',
+  primary: '#7C3AED', // deep violet
+  primaryLight: '#EDE9FE',
+  primaryDark: '#5B21B6',
+  secondary: '#059669', // emerald green
+  secondaryLight: '#D1FAE5',
+  accent: '#F59E0B', // amber
+  accentLight: '#FEF3C7',
 
   // Danger / error
-  danger: '#E53935',
-  dangerLight: '#FFEBEE',
+  danger: '#DC2626',
+  dangerLight: '#FEE2E2',
 
   // Macros
-  protein: '#4A90D9', // clear blue
-  carbs: '#F5A623', // orange
-  fat: '#B06FD4', // purple
-  calories: '#FF6B6B', // alias primary
+  protein: '#3B82F6', // blue
+  carbs: '#F59E0B',   // amber
+  fat: '#A855F7',     // purple
+  calories: '#7C3AED', // alias primary
 
-  // Surfaces — crisp white/grey (no yellow tint)
-  background: '#F2F4F7', // neutral light grey
+  // Surfaces — lavender-tinted neutral
+  background: '#F5F3FF',
   surface: '#FFFFFF',
-  surfaceAlt: '#F7F9FC', // very subtle grey
-  surfaceWarm: '#FAFBFD',
+  surfaceAlt: '#FAF8FF',
+  surfaceWarm: '#FDFCFF',
 
-  // Text — neutral near-black
-  text: '#111827',
-  textSecondary: '#6B7280',
-  textMuted: '#9CA3AF',
+  // Text
+  text: '#1E1B4B',
+  textSecondary: '#6D6899',
+  textMuted: '#A5A3C0',
 
   // Borders
-  border: '#E5E7EB',
-  borderLight: '#F3F4F6',
+  border: '#DDD6FE',
+  borderLight: '#EDE9FE',
 };
 
 export const spacing = {
@@ -47,40 +47,40 @@ export const spacing = {
 };
 
 export const radius = {
-  sm: 10,
-  md: 16,
-  lg: 22,
-  xl: 32,
+  sm: 12,
+  md: 20,
+  lg: 28,
+  xl: 36,
   full: 9999,
 };
 
 export const shadow = {
   sm: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+    shadowColor: '#7C3AED',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
     elevation: 2,
   },
   md: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 4,
+    shadowColor: '#7C3AED',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 14,
+    elevation: 5,
   },
   lg: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
-    elevation: 8,
+    shadowColor: '#7C3AED',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.16,
+    shadowRadius: 24,
+    elevation: 10,
   },
 };
 
 export const gradients = {
-  hero: ['#FF6B6B', '#E04E4E'],
-  sage: ['#4CAF82', '#2E8B5A'],
-  warm: ['#F2F4F7', '#E5E7EB'],
-  golden: ['#F5A623', '#E09010'],
+  hero: ['#7C3AED', '#5B21B6'],
+  sage: ['#059669', '#047857'],
+  warm: ['#F5F3FF', '#EDE9FE'],
+  golden: ['#F59E0B', '#D97706'],
 };

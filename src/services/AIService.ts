@@ -3,7 +3,8 @@ import { storageService } from './StorageService';
 const API_KEY_STORAGE = 'ai:api_key';
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 const MODEL = 'claude-haiku-4-5-20251001';
-const VISION_MODEL = 'claude-sonnet-4-6'; // vision needs a stronger model
+const VISION_MODEL = 'claude-sonnet-4-6';
+const PROMPT_CACHE_BETA = 'prompt-caching-2024-07-31';
 
 const PHOTO_SYSTEM_PROMPT = `Je bent een voedingsexpert die foto's van maaltijden analyseert. Analyseer de foto en schat de voedingswaarden zo nauwkeurig mogelijk in.
 
@@ -154,6 +155,7 @@ class AIService {
   async chat(
     userMessage: string,
     history: { role: 'user' | 'assistant'; content: string }[] = [],
+    healthContext?: string,
   ): Promise<AIResponse> {
     const apiKey = await this.getApiKey();
     if (!apiKey) {
@@ -164,9 +166,21 @@ class AIService {
     }
 
     const messages = [
-      ...history.slice(-6), // keep last 6 messages for context
+      ...history.slice(-10),
       { role: 'user' as const, content: userMessage },
     ];
+
+    // System as array enables prompt caching on the static prompt block
+    const system: object[] = [
+      {
+        type: 'text',
+        text: SYSTEM_PROMPT,
+        cache_control: { type: 'ephemeral' },
+      },
+    ];
+    if (healthContext) {
+      system.push({ type: 'text', text: healthContext });
+    }
 
     const response = await fetch(ANTHROPIC_URL, {
       method: 'POST',
@@ -174,11 +188,12 @@ class AIService {
         'Content-Type': 'application/json',
         'x-api-key': apiKey,
         'anthropic-version': '2023-06-01',
+        'anthropic-beta': PROMPT_CACHE_BETA,
       },
       body: JSON.stringify({
         model: MODEL,
         max_tokens: 1024,
-        system: SYSTEM_PROMPT,
+        system,
         messages,
       }),
     });

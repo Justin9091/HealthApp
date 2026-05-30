@@ -1,10 +1,11 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   View,
   Text,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
+  Switch,
   Image,
   ActivityIndicator,
   Alert,
@@ -19,8 +20,9 @@ import {
   Achievement,
   AchievementCategory,
 } from '../services/AchievementService';
-import { colors, spacing, radius, shadow } from '../constants/theme';
+import { spacing, radius, shadow } from '../constants/theme';
 import { useTheme, THEMES, ThemeKey, AppTheme } from '../context/ThemeContext';
+import { Card, SectionHeader, ListRow, EmptyState, PrimaryButton } from '../components/ui';
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
@@ -53,11 +55,11 @@ function useAuth() {
 
 const CATEGORY_LABELS: Record<AchievementCategory | 'all', string> = {
   all: 'Alles',
-  streak: '🔥 Streak',
-  nutrition: '🍽️ Voeding',
-  fitness: '💪 Fitness',
-  weight: '⚖️ Gewicht',
-  milestone: '📅 Mijlpaal',
+  streak: 'Streak',
+  nutrition: 'Voeding',
+  fitness: 'Fitness',
+  weight: 'Gewicht',
+  milestone: 'Mijlpaal',
 };
 
 function categoryStats(achievements: Achievement[]) {
@@ -84,6 +86,8 @@ function GoogleSignInButton({
   onPress: () => void;
   loading: boolean;
 }) {
+  const { theme } = useTheme();
+  const s = useStyles();
   return (
     <TouchableOpacity
       style={s.googleBtn}
@@ -92,7 +96,7 @@ function GoogleSignInButton({
       activeOpacity={0.85}
     >
       {loading ? (
-        <ActivityIndicator color={colors.text} />
+        <ActivityIndicator color={theme.text} />
       ) : (
         <>
           <Text style={s.googleLogo}>G</Text>
@@ -104,6 +108,7 @@ function GoogleSignInButton({
 }
 
 function LoginCard({ onSignIn }: { onSignIn: () => void }) {
+  const { theme } = useTheme();
   const [loading, setLoading] = useState(false);
 
   const handlePress = async () => {
@@ -113,15 +118,16 @@ function LoginCard({ onSignIn }: { onSignIn: () => void }) {
   };
 
   return (
-    <View style={s.loginCard}>
-      <Text style={s.loginEmoji}>👤</Text>
-      <Text style={s.loginTitle}>Log in voor je profiel</Text>
-      <Text style={s.loginSub}>
-        Koppel je Google-account om je voortgang op te slaan en achievements te
-        tonen.
+    <Card style={{ alignItems: 'center', marginBottom: spacing.lg, gap: spacing.sm }}>
+      <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: theme.primaryLight, alignItems: 'center', justifyContent: 'center' }}>
+        <Icon name="person-outline" size={32} color={theme.primary} />
+      </View>
+      <Text style={{ fontSize: 20, fontWeight: '700', color: theme.text }}>Log in voor je profiel</Text>
+      <Text style={{ fontSize: 14, color: theme.textSecondary, textAlign: 'center', lineHeight: 20 }}>
+        Koppel je Google-account om je voortgang op te slaan en achievements te tonen.
       </Text>
-      <GoogleSignInButton onPress={handlePress} loading={loading} />
-    </View>
+      <PrimaryButton label="Inloggen met Google" onPress={handlePress} loading={loading} style={{ marginTop: spacing.xs, alignSelf: 'stretch' }} />
+    </Card>
   );
 }
 
@@ -132,6 +138,8 @@ function UserHeader({
   user: AuthUser;
   onSignOut: () => void;
 }) {
+  const { theme } = useTheme();
+  const s = useStyles();
   return (
     <View style={s.userHeader}>
       {user.photo ? (
@@ -152,7 +160,7 @@ function UserHeader({
         onPress={onSignOut}
         activeOpacity={0.7}
       >
-        <Icon name="log-out-outline" size={20} color={colors.textMuted} />
+        <Icon name="log-out-outline" size={20} color={theme.textMuted} />
       </TouchableOpacity>
     </View>
   );
@@ -167,6 +175,7 @@ function StatPill({
   label: string;
   color: string;
 }) {
+  const s = useStyles();
   return (
     <View style={s.statPill}>
       <Text style={[s.statValue, { color }]}>{value}</Text>
@@ -176,16 +185,14 @@ function StatPill({
 }
 
 function AchievementBadge({ item }: { item: Achievement }) {
+  const s = useStyles();
   const unlocked = !!item.unlockedAt;
   return (
     <View style={[s.badge, !unlocked && s.badgeLocked]}>
       <Text style={[s.badgeIcon, !unlocked && s.badgeIconLocked]}>
         {item.icon}
       </Text>
-      <Text
-        style={[s.badgeName, !unlocked && s.badgeNameLocked]}
-        numberOfLines={2}
-      >
+      <Text style={s.badgeName} numberOfLines={2}>
         {item.title}
       </Text>
       {unlocked && <View style={s.badgeDot} />}
@@ -203,6 +210,7 @@ function CategoryRow({
   unlocked: number;
   total: number;
 }) {
+  const s = useStyles();
   const pct = total === 0 ? 0 : (unlocked / total) * 100;
   return (
     <View style={s.catRow}>
@@ -220,40 +228,62 @@ function CategoryRow({
 // ─── Theme picker ─────────────────────────────────────────────────────────────
 
 function ThemePicker() {
-  const { theme, setTheme } = useTheme();
+  const { theme, themeKey, darkMode, setTheme, setDarkMode } = useTheme();
   return (
-    <View style={tp.wrap}>
-      {(Object.values(THEMES) as AppTheme[]).map(t => (
-        <TouchableOpacity
-          key={t.key}
-          style={[
-            tp.swatch,
-            { backgroundColor: t.primary },
-            theme.key === t.key && tp.swatchActive,
-          ]}
-          onPress={() => setTheme(t.key as ThemeKey)}
-          activeOpacity={0.8}
-        >
-          {theme.key === t.key && (
-            <Icon name="checkmark" size={16} color="#fff" />
-          )}
-        </TouchableOpacity>
-      ))}
+    <View style={tp.root}>
+      <View style={tp.swatchRow}>
+        {(Object.values(THEMES) as AppTheme[]).map(t => (
+          <TouchableOpacity
+            key={t.key}
+            style={[
+              tp.swatch,
+              { backgroundColor: t.primary },
+              themeKey === t.key && tp.swatchActive,
+            ]}
+            onPress={() => setTheme(t.key as ThemeKey)}
+            activeOpacity={0.8}
+          >
+            {themeKey === t.key && (
+              <Icon name="checkmark" size={16} color="#fff" />
+            )}
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <View style={[tp.darkRow, { backgroundColor: theme.surface, borderColor: theme.borderLight }]}>
+        <View style={tp.darkLeft}>
+          <View style={[tp.darkIcon, { backgroundColor: theme.primaryLight }]}>
+            <Icon name={darkMode ? 'moon' : 'sunny'} size={18} color={theme.primary} />
+          </View>
+          <View>
+            <Text style={[tp.darkLabel, { color: theme.text }]}>Dark mode</Text>
+            <Text style={[tp.darkSub, { color: theme.textMuted }]}>
+              {darkMode ? 'Donker thema aan' : 'Licht thema aan'}
+            </Text>
+          </View>
+        </View>
+        <Switch
+          value={darkMode}
+          onValueChange={setDarkMode}
+          trackColor={{ false: theme.border, true: theme.primary }}
+          thumbColor="#fff"
+        />
+      </View>
     </View>
   );
 }
 
 const tp = StyleSheet.create({
-  wrap: {
+  root: { gap: 12, marginTop: spacing.sm },
+  swatchRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
-    marginTop: spacing.sm,
   },
   swatch: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 48,
+    height: 48,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -266,12 +296,32 @@ const tp = StyleSheet.create({
     shadowRadius: 6,
     elevation: 6,
   },
+  darkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+  },
+  darkLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  darkIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  darkLabel: { fontSize: 15, fontWeight: '700' },
+  darkSub: { fontSize: 12, marginTop: 1 },
 });
 
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 export function ProfileScreen() {
   const navigation = useNavigation<any>();
+  const { theme } = useTheme();
+  const s = useStyles();
   const { user, isLoading, signIn, signOut } = useAuth();
 
   const { data: achievements = [], isLoading: achLoading } = useQuery<
@@ -295,7 +345,7 @@ export function ProfileScreen() {
   if (isLoading) {
     return (
       <SafeAreaView style={s.center}>
-        <ActivityIndicator color={colors.primary} size="large" />
+        <ActivityIndicator color={theme.primary} size="large" />
       </SafeAreaView>
     );
   }
@@ -320,19 +370,15 @@ export function ProfileScreen() {
 
         {/* Achievement overview */}
         <View style={s.section}>
-          <View style={s.sectionHeader}>
-            <Text style={s.sectionTitle}>🏆 Achievements</Text>
-            <TouchableOpacity
-              onPress={() => navigation.navigate('Achievements')}
-              activeOpacity={0.7}
-            >
-              <Text style={s.seeAll}>Alles zien →</Text>
-            </TouchableOpacity>
-          </View>
+          <SectionHeader
+            title="Achievements"
+            action="Alles zien →"
+            onAction={() => navigation.navigate('Achievements')}
+          />
 
           {achLoading ? (
             <ActivityIndicator
-              color={colors.primary}
+              color={theme.primary}
               style={{ marginVertical: spacing.lg }}
             />
           ) : (
@@ -342,12 +388,12 @@ export function ProfileScreen() {
                 <StatPill
                   value={unlockedAll.length}
                   label="Behaald"
-                  color={colors.primary}
+                  color={theme.primary}
                 />
                 <StatPill
                   value={achievements.length}
                   label="Totaal"
-                  color={colors.textSecondary}
+                  color={theme.textSecondary}
                 />
                 <StatPill
                   value={`${Math.round(
@@ -355,7 +401,7 @@ export function ProfileScreen() {
                       100,
                   )}%`}
                   label="Compleet"
-                  color={colors.secondary}
+                  color={theme.secondary}
                 />
               </View>
 
@@ -383,11 +429,7 @@ export function ProfileScreen() {
               )}
 
               {unlockedAll.length === 0 && (
-                <View style={s.emptyAch}>
-                  <Text style={s.emptyAchText}>
-                    Nog geen achievements behaald — ga aan de slag! 💪
-                  </Text>
-                </View>
+                <EmptyState icon="trophy-outline" message="Nog geen achievements behaald — ga aan de slag!" />
               )}
             </>
           )}
@@ -395,41 +437,23 @@ export function ProfileScreen() {
 
         {/* Theme picker */}
         <View style={s.section}>
-          <Text style={s.sectionTitle}>🎨 Thema</Text>
+          <SectionHeader title="Thema" />
           <ThemePicker />
         </View>
 
         {/* Quick links */}
         <View style={s.section}>
-          <Text style={s.sectionTitle}>⚙️ Instellingen</Text>
-          <TouchableOpacity
-            style={s.linkRow}
+          <SectionHeader title="Instellingen" />
+          <ListRow
+            icon="flag-outline"
+            label="Doelen instellen"
             onPress={() => navigation.navigate('Goals')}
-            activeOpacity={0.7}
-          >
-            <Icon name="flag-outline" size={20} color={colors.primary} />
-            <Text style={s.linkText}>Doelen instellen</Text>
-            <Icon
-              name="chevron-forward"
-              size={18}
-              color={colors.textMuted}
-              style={{ marginLeft: 'auto' }}
-            />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={s.linkRow}
+          />
+          <ListRow
+            icon="time-outline"
+            label="Geschiedenis"
             onPress={() => navigation.navigate('History')}
-            activeOpacity={0.7}
-          >
-            <Icon name="time-outline" size={20} color={colors.primary} />
-            <Text style={s.linkText}>Geschiedenis</Text>
-            <Icon
-              name="chevron-forward"
-              size={18}
-              color={colors.textMuted}
-              style={{ marginLeft: 'auto' }}
-            />
-          </TouchableOpacity>
+          />
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -438,221 +462,224 @@ export function ProfileScreen() {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.background },
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.background,
-  },
-  scroll: { padding: spacing.md, paddingBottom: spacing.xxl },
+function useStyles() {
+  const { theme } = useTheme();
+  return useMemo(
+    () =>
+      StyleSheet.create({
+        root: { flex: 1, backgroundColor: theme.background },
+        center: {
+          flex: 1,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: theme.background,
+        },
+        scroll: { paddingHorizontal: spacing.md, paddingBottom: spacing.xxl },
 
-  topRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.md,
-  },
-  screenTitle: { fontSize: 28, fontWeight: '800', color: colors.text },
+        topRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          marginBottom: spacing.lg,
+          marginTop: spacing.sm,
+        },
+        screenTitle: { fontSize: 32, fontWeight: '900', color: theme.text, letterSpacing: -1 },
 
-  // Login card
-  loginCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    alignItems: 'center',
-    ...shadow.md,
-    marginBottom: spacing.lg,
-  },
-  loginEmoji: { fontSize: 48, marginBottom: spacing.sm },
-  loginTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: spacing.sm,
-  },
-  loginSub: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: spacing.lg,
-  },
+        loginCard: {
+          backgroundColor: theme.surface,
+          borderRadius: radius.lg,
+          padding: spacing.lg,
+          alignItems: 'center',
+          ...shadow.md,
+          marginBottom: spacing.lg,
+        },
+        loginTitle: {
+          fontSize: 20,
+          fontWeight: '700',
+          color: theme.text,
+          marginBottom: spacing.sm,
+        },
+        loginSub: {
+          fontSize: 14,
+          color: theme.textSecondary,
+          textAlign: 'center',
+          lineHeight: 20,
+          marginBottom: spacing.lg,
+        },
 
-  googleBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    borderRadius: radius.full,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    gap: 10,
-    ...shadow.sm,
-  },
-  googleLogo: { fontSize: 18, fontWeight: '800', color: '#4285F4' },
-  googleBtnText: { fontSize: 15, fontWeight: '600', color: colors.text },
+        googleBtn: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          backgroundColor: theme.surface,
+          borderWidth: 1.5,
+          borderColor: theme.border,
+          borderRadius: radius.full,
+          paddingVertical: 12,
+          paddingHorizontal: 24,
+          gap: 10,
+          ...shadow.sm,
+        },
+        googleLogo: { fontSize: 18, fontWeight: '800', color: '#4285F4' },
+        googleBtnText: { fontSize: 15, fontWeight: '600', color: theme.text },
 
-  // User header
-  userHeader: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.lg,
-    ...shadow.md,
-    gap: spacing.md,
-  },
-  avatar: { width: 60, height: 60, borderRadius: 30 },
-  avatarPlaceholder: {
-    backgroundColor: colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarInitial: { fontSize: 26, fontWeight: '800', color: colors.primary },
-  userInfo: { flex: 1 },
-  userName: { fontSize: 17, fontWeight: '700', color: colors.text },
-  userEmail: { fontSize: 13, color: colors.textMuted, marginTop: 2 },
-  signOutBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.surfaceAlt,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+        userHeader: {
+          backgroundColor: theme.surface,
+          borderRadius: radius.xl,
+          padding: spacing.lg,
+          flexDirection: 'row',
+          alignItems: 'center',
+          marginBottom: spacing.lg,
+          borderWidth: 1,
+          borderColor: theme.borderLight,
+          ...shadow.md,
+          gap: spacing.md,
+        },
+        avatar: { width: 56, height: 56, borderRadius: 28 },
+        avatarPlaceholder: {
+          backgroundColor: theme.primaryLight,
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        avatarInitial: { fontSize: 22, fontWeight: '900', color: theme.primary },
+        userInfo: { flex: 1 },
+        userName: { fontSize: 18, fontWeight: '800', color: theme.text },
+        userEmail: { fontSize: 13, color: theme.textMuted, marginTop: 2 },
+        signOutBtn: {
+          width: 36,
+          height: 36,
+          borderRadius: 18,
+          backgroundColor: theme.surfaceAlt,
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
 
-  // Sections
-  section: { marginBottom: spacing.lg },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.md,
-  },
-  sectionTitle: { fontSize: 18, fontWeight: '700', color: colors.text },
-  seeAll: { fontSize: 14, fontWeight: '600', color: colors.primary },
-  subTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.textSecondary,
-    marginTop: spacing.md,
-    marginBottom: spacing.sm,
-  },
+        section: { marginBottom: spacing.lg },
+        sectionHeader: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: spacing.md,
+        },
+        sectionTitle: { fontSize: 18, fontWeight: '700', color: theme.text },
+        seeAll: { fontSize: 14, fontWeight: '600', color: theme.primary },
+        subTitle: {
+          fontSize: 14,
+          fontWeight: '600',
+          color: theme.textSecondary,
+          marginTop: spacing.md,
+          marginBottom: spacing.sm,
+        },
 
-  // Pills
-  pillRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginBottom: spacing.md,
-  },
-  statPill: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-    ...shadow.sm,
-  },
-  statValue: { fontSize: 24, fontWeight: '800' },
-  statLabel: {
-    fontSize: 11,
-    color: colors.textMuted,
-    marginTop: 2,
-    fontWeight: '600',
-  },
+        pillRow: {
+          flexDirection: 'row',
+          gap: spacing.sm,
+          marginBottom: spacing.md,
+        },
+        statPill: {
+          flex: 1,
+          backgroundColor: theme.surface,
+          borderRadius: radius.lg,
+          paddingVertical: spacing.lg,
+          alignItems: 'center',
+          borderWidth: 1,
+          borderColor: theme.borderLight,
+          ...shadow.sm,
+        },
+        statValue: { fontSize: 28, fontWeight: '900', letterSpacing: -0.5 },
+        statLabel: {
+          fontSize: 11,
+          color: theme.textMuted,
+          marginTop: 2,
+          fontWeight: '600',
+        },
 
-  // Category bars
-  catCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    gap: spacing.sm,
-    ...shadow.sm,
-  },
-  catRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  catLabel: {
-    width: 110,
-    fontSize: 13,
-    color: colors.textSecondary,
-    fontWeight: '500',
-  },
-  catBarTrack: {
-    flex: 1,
-    height: 8,
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  catBarFill: {
-    height: '100%',
-    backgroundColor: colors.primary,
-    borderRadius: 4,
-  },
-  catCount: {
-    width: 32,
-    textAlign: 'right',
-    fontSize: 12,
-    color: colors.textMuted,
-    fontWeight: '600',
-  },
+        catCard: {
+          backgroundColor: theme.surface,
+          borderRadius: radius.md,
+          padding: spacing.md,
+          gap: spacing.sm,
+          ...shadow.sm,
+        },
+        catRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+        catLabel: {
+          width: 110,
+          fontSize: 14,
+          color: theme.textSecondary,
+          fontWeight: '600',
+        },
+        catBarTrack: {
+          flex: 1,
+          height: 10,
+          backgroundColor: theme.surfaceAlt,
+          borderRadius: 5,
+          overflow: 'hidden',
+        },
+        catBarFill: {
+          height: '100%',
+          backgroundColor: theme.primary,
+          borderRadius: 5,
+        },
+        catCount: {
+          width: 32,
+          textAlign: 'right',
+          fontSize: 12,
+          color: theme.textMuted,
+          fontWeight: '600',
+        },
 
-  // Badges
-  badgeRow: { gap: spacing.sm, paddingVertical: spacing.xs },
-  badge: {
-    width: 88,
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    padding: spacing.sm,
-    alignItems: 'center',
-    gap: 4,
-    ...shadow.sm,
-    position: 'relative',
-  },
-  badgeLocked: { backgroundColor: colors.surfaceAlt, opacity: 0.55 },
-  badgeIcon: { fontSize: 28 },
-  badgeIconLocked: { opacity: 0.4 },
-  badgeName: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: colors.text,
-    textAlign: 'center',
-  },
-  badgeNameLocked: { color: colors.textMuted },
-  badgeDot: {
-    position: 'absolute',
-    top: 6,
-    right: 6,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.secondary,
-  },
+        badgeRow: { gap: spacing.sm, paddingVertical: spacing.xs },
+        badge: {
+          width: 88,
+          backgroundColor: theme.surface,
+          borderRadius: radius.md,
+          padding: spacing.sm,
+          alignItems: 'center',
+          gap: 4,
+          ...shadow.sm,
+          position: 'relative',
+        },
+        badgeLocked: { backgroundColor: theme.surfaceAlt, opacity: 0.55 },
+        badgeIcon: { fontSize: 28 },
+        badgeIconLocked: { opacity: 0.4 },
+        badgeName: {
+          fontSize: 11,
+          fontWeight: '600',
+          color: theme.text,
+          textAlign: 'center',
+        },
+        badgeDot: {
+          position: 'absolute',
+          top: 6,
+          right: 6,
+          width: 8,
+          height: 8,
+          borderRadius: 4,
+          backgroundColor: theme.secondary,
+        },
 
-  emptyAch: {
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    alignItems: 'center',
-  },
-  emptyAchText: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    textAlign: 'center',
-  },
+        emptyAch: {
+          backgroundColor: theme.surfaceAlt,
+          borderRadius: radius.md,
+          padding: spacing.md,
+          alignItems: 'center',
+        },
+        emptyAchText: {
+          fontSize: 14,
+          color: theme.textSecondary,
+          textAlign: 'center',
+        },
 
-  // Quick links
-  linkRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    marginTop: spacing.sm,
-    gap: spacing.sm,
-    ...shadow.sm,
-  },
-  linkText: { fontSize: 15, fontWeight: '600', color: colors.text },
-});
+        linkRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          backgroundColor: theme.surface,
+          borderRadius: radius.md,
+          padding: spacing.md,
+          marginTop: spacing.sm,
+          gap: spacing.sm,
+          ...shadow.sm,
+        },
+        linkText: { fontSize: 15, fontWeight: '600', color: theme.text },
+      }),
+    [theme],
+  );
+}

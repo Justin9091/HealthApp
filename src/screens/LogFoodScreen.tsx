@@ -18,8 +18,9 @@ import {
   useRemoveFood,
 } from '../hooks/useNutrition';
 import { FoodEntry, MealType } from '../types';
-import { colors, spacing, radius, shadow } from '../constants/theme';
+import { spacing, radius, shadow } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
+import { FormField, inputStyle, PrimaryButton, GhostButton } from '../components/ui';
 import { formatTime, todayStr } from '../utils/helpers';
 import { FoodPhotoScanner } from '../components/FoodPhotoScanner';
 import { ParsedFoodItem } from '../services/AIService';
@@ -27,10 +28,10 @@ import { nutritionService } from '../services/NutritionService';
 import Icon from 'react-native-vector-icons/Ionicons';
 
 const MEAL_TYPES: { value: MealType; label: string; icon: string }[] = [
-  { value: 'breakfast', label: 'Ontbijt', icon: '🌅' },
-  { value: 'lunch', label: 'Lunch', icon: '☀️' },
-  { value: 'dinner', label: 'Diner', icon: '🌙' },
-  { value: 'snack', label: 'Snack', icon: '🍎' },
+  { value: 'breakfast', label: 'Ontbijt', icon: 'partly-sunny-outline' },
+  { value: 'lunch', label: 'Lunch', icon: 'sunny-outline' },
+  { value: 'dinner', label: 'Diner', icon: 'moon-outline' },
+  { value: 'snack', label: 'Snack', icon: 'nutrition-outline' },
 ];
 
 export function LogFoodScreen(_props: any) {
@@ -119,15 +120,15 @@ export function LogFoodScreen(_props: any) {
           flexDirection: 'row',
           alignItems: 'center',
           paddingHorizontal: spacing.md,
-          paddingVertical: spacing.sm,
-          backgroundColor: theme.surface,
-          borderBottomWidth: 1,
-          borderBottomColor: theme.border,
+          paddingBottom: spacing.md,
+          paddingTop: spacing.md,
+          backgroundColor: theme.background,
         },
         headerTitle: {
           flex: 1,
-          fontSize: 17,
-          fontWeight: '700',
+          fontSize: 20,
+          fontWeight: '900',
+          letterSpacing: -0.5,
           color: theme.text,
         },
         headerCal: { fontSize: 13, color: theme.textSecondary },
@@ -139,8 +140,8 @@ export function LogFoodScreen(_props: any) {
         mealChip: {
           flex: 1,
           backgroundColor: theme.surface,
-          borderRadius: radius.md,
-          paddingVertical: spacing.sm,
+          borderRadius: radius.full,
+          paddingVertical: 10,
           alignItems: 'center',
           borderWidth: 2,
           borderColor: 'transparent',
@@ -150,12 +151,11 @@ export function LogFoodScreen(_props: any) {
           borderColor: theme.primary,
           backgroundColor: theme.primaryLight,
         },
-        mealEmoji: { fontSize: 18 },
         mealLabel: {
-          fontSize: 10,
+          fontSize: 11,
           color: theme.textSecondary,
           marginTop: 2,
-          fontWeight: '500',
+          fontWeight: '600',
         },
         mealLabelActive: { color: theme.primary, fontWeight: '700' },
 
@@ -164,12 +164,13 @@ export function LogFoodScreen(_props: any) {
           flexDirection: 'row',
           alignItems: 'center',
           backgroundColor: theme.surface,
-          borderRadius: radius.lg,
-          paddingHorizontal: spacing.sm,
+          borderRadius: radius.full,
+          paddingHorizontal: spacing.md,
           gap: spacing.xs,
           ...shadow.sm,
           borderWidth: 1,
           borderColor: theme.border,
+          height: 48,
         },
         searchInput: {
           flex: 1,
@@ -186,34 +187,34 @@ export function LogFoodScreen(_props: any) {
           marginBottom: spacing.xs,
         },
         sectionTitle: {
-          fontSize: 13,
-          fontWeight: '700',
+          fontSize: 11,
+          fontWeight: '800',
           color: theme.textSecondary,
           textTransform: 'uppercase',
-          letterSpacing: 0.5,
+          letterSpacing: 1,
         },
 
         // Recent item
         recentItem: {
           backgroundColor: theme.surface,
-          borderRadius: radius.md,
-          padding: spacing.sm,
+          borderRadius: radius.lg,
+          padding: spacing.md,
           flexDirection: 'row',
           alignItems: 'center',
           gap: spacing.sm,
           ...shadow.sm,
         },
         recentItemName: {
-          fontSize: 14,
-          fontWeight: '600',
+          fontSize: 15,
+          fontWeight: '700',
           color: theme.text,
           flex: 1,
         },
         recentItemMeta: { fontSize: 12, color: theme.textSecondary },
         addBtn: {
-          width: 32,
-          height: 32,
-          borderRadius: 16,
+          width: 36,
+          height: 36,
+          borderRadius: 18,
           backgroundColor: theme.primaryLight,
           alignItems: 'center',
           justifyContent: 'center',
@@ -232,7 +233,7 @@ export function LogFoodScreen(_props: any) {
           justifyContent: 'center',
           gap: spacing.xs,
           padding: spacing.md,
-          borderRadius: radius.md,
+          borderRadius: radius.full,
           borderWidth: 1.5,
           borderColor: theme.border,
           borderStyle: 'dashed' as any,
@@ -246,7 +247,7 @@ export function LogFoodScreen(_props: any) {
         // Logged entries
         mealSection: {
           backgroundColor: theme.surface,
-          borderRadius: radius.lg,
+          borderRadius: radius.xl,
           overflow: 'hidden',
           ...shadow.sm,
         },
@@ -260,8 +261,8 @@ export function LogFoodScreen(_props: any) {
           borderBottomColor: theme.borderLight,
         },
         mealSectionTitle: {
-          fontSize: 14,
-          fontWeight: '700',
+          fontSize: 15,
+          fontWeight: '800',
           color: theme.text,
         },
         mealSectionCal: { fontSize: 13, color: theme.textSecondary },
@@ -310,7 +311,13 @@ export function LogFoodScreen(_props: any) {
                 ]}
                 onPress={() => setSelectedMeal(m.value)}
               >
-                <Text style={s.mealEmoji}>{m.icon}</Text>
+                <Icon
+                  name={m.icon}
+                  size={18}
+                  color={
+                    selectedMeal === m.value ? theme.primary : theme.textMuted
+                  }
+                />
                 <Text
                   style={[
                     s.mealLabel,
@@ -403,9 +410,10 @@ export function LogFoodScreen(_props: any) {
               {entriesByMeal.map(meal => (
                 <View key={meal.value} style={s.mealSection}>
                   <View style={s.mealSectionHeader}>
-                    <Text style={s.mealSectionTitle}>
-                      {meal.icon} {meal.label}
-                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Icon name={meal.icon} size={14} color={theme.textSecondary} />
+                      <Text style={s.mealSectionTitle}>{meal.label}</Text>
+                    </View>
                     <Text style={s.mealSectionCal}>
                       {meal.entries.reduce((t, e) => t + e.calories, 0)} kcal
                     </Text>
@@ -427,7 +435,7 @@ export function LogFoodScreen(_props: any) {
                         <Icon
                           name="trash-outline"
                           size={18}
-                          color={colors.danger}
+                          color={theme.danger}
                         />
                       </TouchableOpacity>
                     </View>
@@ -514,43 +522,19 @@ function ManualAddModal({
         },
         sheet: {
           backgroundColor: theme.surface,
-          borderTopLeftRadius: radius.xl,
-          borderTopRightRadius: radius.xl,
+          borderTopLeftRadius: radius.xl + 4,
+          borderTopRightRadius: radius.xl + 4,
           padding: spacing.lg,
           gap: spacing.sm,
         },
         title: {
-          fontSize: 18,
-          fontWeight: '800',
+          fontSize: 20,
+          fontWeight: '900',
+          letterSpacing: -0.5,
           color: theme.text,
           marginBottom: spacing.xs,
         },
-        label: {
-          fontSize: 12,
-          color: theme.textSecondary,
-          marginBottom: 3,
-          fontWeight: '500',
-        },
-        input: {
-          borderWidth: 1,
-          borderColor: theme.border,
-          borderRadius: radius.sm,
-          padding: spacing.sm,
-          fontSize: 15,
-          color: theme.text,
-          backgroundColor: theme.background,
-        },
         row: { flexDirection: 'row', gap: spacing.sm },
-        addBtn: {
-          backgroundColor: theme.primary,
-          borderRadius: radius.md,
-          padding: spacing.md,
-          alignItems: 'center',
-          marginTop: spacing.xs,
-        },
-        addBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
-        cancelBtn: { alignItems: 'center', paddingVertical: spacing.sm },
-        cancelText: { color: theme.textSecondary, fontSize: 14 },
         handle: {
           width: 36,
           height: 4,
@@ -579,78 +563,65 @@ function ManualAddModal({
             <View style={ms.handle} />
             <Text style={ms.title}>Handmatig toevoegen</Text>
 
-            <Text style={ms.label}>Naam *</Text>
-            <TextInput
-              style={ms.input}
-              placeholder="bijv. Kipfilet"
-              placeholderTextColor={theme.textMuted}
-              value={name}
-              onChangeText={setName}
-              autoFocus
-            />
+            <FormField label="Naam" required>
+              <TextInput
+                style={inputStyle(theme)}
+                placeholder="bijv. Kipfilet"
+                placeholderTextColor={theme.textMuted}
+                value={name}
+                onChangeText={setName}
+                autoFocus
+              />
+            </FormField>
 
             <View style={ms.row}>
-              <View style={{ flex: 1 }}>
-                <Text style={ms.label}>Calorieën *</Text>
+              <FormField label="Calorieën" required style={{ flex: 1 }}>
                 <TextInput
-                  style={ms.input}
+                  style={inputStyle(theme)}
                   placeholder="kcal"
                   keyboardType="numeric"
                   placeholderTextColor={theme.textMuted}
                   value={calories}
                   onChangeText={setCalories}
                 />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={ms.label}>Eiwit (g)</Text>
+              </FormField>
+              <FormField label="Eiwit (g)" style={{ flex: 1 }}>
                 <TextInput
-                  style={ms.input}
+                  style={inputStyle(theme)}
                   placeholder="g"
                   keyboardType="numeric"
                   placeholderTextColor={theme.textMuted}
                   value={protein}
                   onChangeText={setProtein}
                 />
-              </View>
+              </FormField>
             </View>
 
             <View style={ms.row}>
-              <View style={{ flex: 1 }}>
-                <Text style={ms.label}>Koolhydraten (g)</Text>
+              <FormField label="Koolhydraten (g)" style={{ flex: 1 }}>
                 <TextInput
-                  style={ms.input}
+                  style={inputStyle(theme)}
                   placeholder="g"
                   keyboardType="numeric"
                   placeholderTextColor={theme.textMuted}
                   value={carbs}
                   onChangeText={setCarbs}
                 />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={ms.label}>Vetten (g)</Text>
+              </FormField>
+              <FormField label="Vetten (g)" style={{ flex: 1 }}>
                 <TextInput
-                  style={ms.input}
+                  style={inputStyle(theme)}
                   placeholder="g"
                   keyboardType="numeric"
                   placeholderTextColor={theme.textMuted}
                   value={fat}
                   onChangeText={setFat}
                 />
-              </View>
+              </FormField>
             </View>
 
-            <TouchableOpacity
-              style={ms.addBtn}
-              onPress={handleAdd}
-              disabled={saving}
-            >
-              <Text style={ms.addBtnText}>
-                {saving ? 'Opslaan...' : '+ Toevoegen'}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={ms.cancelBtn} onPress={onClose}>
-              <Text style={ms.cancelText}>Annuleren</Text>
-            </TouchableOpacity>
+            <PrimaryButton label={saving ? 'Opslaan...' : 'Toevoegen'} onPress={handleAdd} loading={saving} style={{ marginTop: spacing.xs }} />
+            <GhostButton label="Annuleren" onPress={onClose} />
           </View>
         </View>
       </KeyboardAvoidingView>

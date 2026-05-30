@@ -32,13 +32,15 @@ function TabIcon({ name, focused }: { name: string; focused: boolean }) {
     <View
       style={[
         tabStyles.iconWrap,
-        focused && { backgroundColor: theme.primaryLight },
+        focused
+          ? { backgroundColor: theme.primary, width: 38, height: 38, borderRadius: 19 }
+          : { backgroundColor: 'transparent', width: 38, height: 38, borderRadius: 19 },
       ]}
     >
       <Icon
         name={focused ? name : `${name}-outline`}
         size={22}
-        color={focused ? theme.primary : theme.textMuted}
+        color={focused ? '#ffffff' : theme.textMuted}
       />
     </View>
   );
@@ -46,9 +48,9 @@ function TabIcon({ name, focused }: { name: string; focused: boolean }) {
 
 const tabStyles = StyleSheet.create({
   iconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -66,21 +68,29 @@ function HomeTabs() {
         tabBarStyle: {
           backgroundColor: theme.surface,
           borderTopWidth: 0,
-          height: Platform.OS === 'ios' ? 84 : 68,
-          paddingBottom: Platform.OS === 'ios' ? 24 : 8,
+          position: 'absolute',
+          bottom: 20,
+          left: 20,
+          right: 20,
+          borderRadius: 28,
+          height: Platform.OS === 'ios' ? 68 : 60,
+          paddingBottom: Platform.OS === 'ios' ? 12 : 8,
           paddingTop: 8,
-          ...shadow.md,
-          shadowOffset: { width: 0, height: -4 },
+          shadowColor: theme.primary,
+          shadowOpacity: 0.18,
+          shadowRadius: 20,
+          shadowOffset: { width: 0, height: 8 },
+          elevation: 20,
         },
         tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '600',
+          fontSize: 10,
+          fontWeight: '700',
           marginTop: 0,
         },
         tabBarItemStyle: {
+          flex: 1,
           alignItems: 'center',
-          justifyContent: 'flex-start',
-          paddingTop: 6,
+          justifyContent: 'center',
         },
         headerStyle: {
           backgroundColor: theme.background,
@@ -121,7 +131,7 @@ function HomeTabs() {
         name={Routes.LOG_WORKOUT}
         component={LogWorkoutScreen}
         options={{
-          title: 'Training',
+          title: 'Sport',
           tabBarIcon: ({ focused }) => (
             <TabIcon name="barbell" focused={focused} />
           ),
@@ -131,7 +141,7 @@ function HomeTabs() {
         name={Routes.PROGRESS}
         component={ProgressScreen}
         options={{
-          title: 'Voortgang',
+          title: 'Trend',
           tabBarIcon: ({ focused }) => (
             <TabIcon name="stats-chart" focused={focused} />
           ),

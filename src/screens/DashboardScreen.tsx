@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useMemo } from 'react';
+import React, { useEffect, useRef, useMemo, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,9 @@ import {
   TouchableOpacity,
   RefreshControl,
   Animated,
+  PanResponder,
+  Modal,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -22,11 +25,28 @@ import { useFitnessSummary } from '../hooks/useFitness';
 import { useDailyHealthSummary } from '../hooks/useGoogleHealth';
 import { colors, spacing, radius, shadow } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
-import { formatDate, todayStr } from '../utils/helpers';
+import { todayStr } from '../utils/helpers';
+import {
+  format,
+  addDays,
+  subDays,
+  startOfMonth,
+  endOfMonth,
+  startOfWeek,
+  endOfWeek,
+  isSameMonth,
+  isSameDay,
+  isAfter,
+  parseISO,
+} from 'date-fns';
+import { nl } from 'date-fns/locale';
 import { queryKeys } from '../utils/queryKeys';
 import { streakService } from '../services/StreakService';
+import { useMoodEntry, useMoodHistory, useLogMood } from '../hooks/useMood';
+import { EnergyLevel } from '../services/MoodService';
 
-const today = todayStr();
+const todayDate = new Date();
+todayDate.setHours(0, 0, 0, 0);
 
 // ─── Stagger animation hook ───────────────────────────────────────────────────
 
@@ -169,7 +189,7 @@ const rm = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  value: { fontSize: 13, fontWeight: '800' },
+  value: { fontSize: 14, fontWeight: '900' },
   label: { fontSize: 11, fontWeight: '500' },
 });
 
@@ -185,11 +205,45 @@ function greeting(name: string) {
 export function DashboardScreen({ navigation }: any) {
   const { theme } = useTheme();
   const qc = useQueryClient();
-  const [refreshing, setRefreshing] = React.useState(false);
-  const [userName, setUserName] = React.useState('');
+  const [refreshing, setRefreshing] = useState(false);
+  const [userName, setUserName] = useState('');
+  const [selectedDate, setSelectedDate] = useState<Date>(todayDate);
+  const [calendarOpen, setCalendarOpen] = useState(false);
   const anims = useStagger(5, 70);
+  const slideAnim = useRef(new Animated.Value(0)).current;
 
-  React.useEffect(() => {
+  const today = format(selectedDate, 'yyyy-MM-dd');
+  const isToday = isSameDay(selectedDate, todayDate);
+
+  const selectedDateRef = useRef(selectedDate);
+  selectedDateRef.current = selectedDate;
+
+  const shiftDate = useCallback((days: number) => {
+    const current = selectedDateRef.current;
+    const next = days > 0 ? addDays(current, 1) : subDays(current, 1);
+    if (isAfter(next, todayDate)) return;
+    const dir = days > 0 ? 60 : -60;
+    Animated.sequence([
+      Animated.timing(slideAnim, { toValue: -dir, duration: 80, useNativeDriver: true }),
+      Animated.timing(slideAnim, { toValue: 0, duration: 160, useNativeDriver: true }),
+    ]).start();
+    setSelectedDate(next);
+  }, [slideAnim]);
+
+  const shiftDateRef = useRef(shiftDate);
+  shiftDateRef.current = shiftDate;
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, g) =>
+        Math.abs(g.dx) > 12 && Math.abs(g.dx) > Math.abs(g.dy) * 2,
+      onPanResponderRelease: (_, g) => {
+        if (Math.abs(g.dx) > 50) shiftDateRef.current(g.dx < 0 ? 1 : -1);
+      },
+    }),
+  ).current;
+
+  useEffect(() => {
     AsyncStorage.getItem('user_name').then(n => {
       if (n) setUserName(n);
     });
@@ -212,28 +266,49 @@ export function DashboardScreen({ navigation }: any) {
         safe: { flex: 1, backgroundColor: theme.background },
         scroll: { flex: 1 },
         content: {
-          paddingHorizontal: spacing.md,
-          paddingBottom: 40,
+          paddingHorizontal: 0,
+          paddingBottom: 100,
           gap: spacing.md,
         },
 
         header: {
+          backgroundColor: theme.primary,
+          paddingHorizontal: spacing.md,
+          paddingTop: spacing.md,
+          paddingBottom: spacing.xxl + 20,
+          gap: spacing.sm,
+        },
+        headerTop: {
           flexDirection: 'row',
           alignItems: 'center',
-          paddingTop: spacing.md,
-          paddingBottom: spacing.xs,
         },
         greeting: {
-          fontSize: 24,
-          fontWeight: '800',
-          color: theme.text,
+          fontSize: 26,
+          fontWeight: '900',
+          color: '#fff',
           letterSpacing: -0.5,
         },
-        date: {
-          fontSize: 13,
-          color: theme.textSecondary,
-          marginTop: 2,
-          textTransform: 'capitalize',
+        dateNav: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: spacing.sm,
+        },
+        datePill: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 6,
+          backgroundColor: 'rgba(255,255,255,0.18)',
+          borderRadius: radius.full,
+          paddingHorizontal: 14,
+          paddingVertical: 7,
+          borderWidth: 1,
+          borderColor: 'rgba(255,255,255,0.25)',
+        },
+        dateText: {
+          fontSize: 14,
+          fontWeight: '700',
+          color: '#fff',
         },
         headerRight: {
           flexDirection: 'row',
@@ -244,19 +319,19 @@ export function DashboardScreen({ navigation }: any) {
           flexDirection: 'row',
           alignItems: 'center',
           gap: 4,
-          backgroundColor: '#FFF3E0',
+          backgroundColor: 'rgba(255,255,255,0.2)',
           borderRadius: radius.full,
           paddingHorizontal: 10,
           paddingVertical: 6,
           borderWidth: 1.5,
-          borderColor: '#FFB74D',
+          borderColor: 'rgba(255,255,255,0.4)',
         },
-        streakNum: { fontSize: 14, fontWeight: '800', color: '#E65100' },
+        streakNum: { fontSize: 14, fontWeight: '800', color: '#fff' },
         aiBtn: {
           width: 38,
           height: 38,
           borderRadius: 19,
-          backgroundColor: theme.primaryLight,
+          backgroundColor: 'rgba(255,255,255,0.2)',
           alignItems: 'center',
           justifyContent: 'center',
         },
@@ -267,7 +342,9 @@ export function DashboardScreen({ navigation }: any) {
           paddingVertical: spacing.lg,
           paddingHorizontal: spacing.md,
           alignItems: 'center',
-          ...shadow.md,
+          marginHorizontal: spacing.md,
+          marginTop: -(spacing.xxl),
+          ...shadow.lg,
         },
         arcWrap: {
           width: ARC,
@@ -278,9 +355,9 @@ export function DashboardScreen({ navigation }: any) {
         },
         arcInner: { alignItems: 'center' },
         arcNum: {
-          fontSize: 52,
+          fontSize: 56,
           fontWeight: '900',
-          letterSpacing: -2,
+          letterSpacing: -3,
           lineHeight: 56,
         },
         arcLabel: {
@@ -313,6 +390,7 @@ export function DashboardScreen({ navigation }: any) {
           paddingHorizontal: spacing.lg,
           flexDirection: 'row',
           alignItems: 'center',
+          marginHorizontal: spacing.md,
           ...shadow.sm,
         },
         ringDivider: {
@@ -321,12 +399,13 @@ export function DashboardScreen({ navigation }: any) {
           backgroundColor: theme.borderLight,
         },
 
-        quickRow: { flexDirection: 'row', gap: spacing.md },
+        quickRow: { flexDirection: 'row', gap: spacing.md, marginHorizontal: spacing.md },
         quickCard: {
           flex: 1,
           borderRadius: radius.xl,
           padding: spacing.md,
           gap: spacing.sm,
+          minHeight: 140,
           ...shadow.sm,
         },
         quickIcon: {
@@ -347,7 +426,7 @@ export function DashboardScreen({ navigation }: any) {
           alignItems: 'baseline',
           marginTop: 4,
         },
-        quickMetaNum: { fontSize: 22, fontWeight: '900', color: theme.text },
+        quickMetaNum: { fontSize: 28, fontWeight: '900', color: theme.text },
         quickMetaLabel: { fontSize: 12, color: theme.textSecondary },
 
         macroCard: {
@@ -355,6 +434,7 @@ export function DashboardScreen({ navigation }: any) {
           borderRadius: radius.xl,
           padding: spacing.md,
           gap: spacing.sm,
+          marginHorizontal: spacing.md,
           ...shadow.sm,
         },
         macroRow: {
@@ -370,12 +450,12 @@ export function DashboardScreen({ navigation }: any) {
         },
         macroTrack: {
           flex: 1,
-          height: 6,
+          height: 10,
           backgroundColor: theme.surfaceAlt,
-          borderRadius: 3,
+          borderRadius: 5,
           overflow: 'hidden',
         },
-        macroFill: { height: '100%', borderRadius: 3 },
+        macroFill: { height: '100%', borderRadius: 5 },
         macroVal: {
           fontSize: 12,
           fontWeight: '700',
@@ -384,7 +464,7 @@ export function DashboardScreen({ navigation }: any) {
           textAlign: 'right',
         },
 
-        healthRow: { flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap' },
+        healthRow: { flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap', marginHorizontal: spacing.md },
         healthPill: {
           flexDirection: 'row',
           alignItems: 'center',
@@ -404,6 +484,7 @@ export function DashboardScreen({ navigation }: any) {
           justifyContent: 'space-between',
           borderWidth: 1.5,
           borderColor: theme.primary + '40',
+          marginHorizontal: spacing.md,
           ...shadow.sm,
         },
         reportLeft: { gap: 4 },
@@ -474,43 +555,75 @@ export function DashboardScreen({ navigation }: any) {
         }
       >
         {/* ── Header ── */}
-        <Animated.View style={[s.header, staggerStyle(anims[0])]}>
-          <View style={{ flex: 1 }}>
-            <Text style={s.greeting}>{greeting(userName || 'jij')}</Text>
-            <Text style={s.date}>{formatDate(new Date())}</Text>
-          </View>
-          <View style={s.headerRight}>
-            {streak > 0 && (
+        <Animated.View style={[s.header, staggerStyle(anims[0])]} {...panResponder.panHandlers}>
+          <View style={s.headerTop}>
+            <View style={{ flex: 1 }}>
+              <Text style={s.greeting}>{greeting(userName || 'jij')}</Text>
+            </View>
+            <View style={s.headerRight}>
+              {streak > 0 && (
+                <TouchableOpacity
+                  style={s.streak}
+                  onPress={() => navigation.navigate('Achievements')}
+                  activeOpacity={0.8}
+                >
+                  <Icon name="flame" size={15} color={theme.accent} />
+                  <Text style={s.streakNum}>{streak}</Text>
+                </TouchableOpacity>
+              )}
               <TouchableOpacity
-                style={s.streak}
-                onPress={() => navigation.navigate('Achievements')}
+                style={s.aiBtn}
+                onPress={() =>
+                  navigation.navigate('DailyReport' as never, { date: today } as never)
+                }
                 activeOpacity={0.8}
               >
-                <Icon name="flame" size={15} color="#E65100" />
-                <Text style={s.streakNum}>{streak}</Text>
+                <Icon name="document-text" size={18} color="#fff" />
               </TouchableOpacity>
-            )}
-            <TouchableOpacity
-              style={s.aiBtn}
-              onPress={() =>
-                navigation.navigate(
-                  'DailyReport' as never,
-                  { date: today } as never,
-                )
-              }
-              activeOpacity={0.8}
-            >
-              <Icon name="document-text" size={18} color={theme.primary} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={s.aiBtn}
-              onPress={() => navigation.navigate('Chat')}
-              activeOpacity={0.8}
-            >
-              <Icon name="sparkles" size={18} color={theme.primary} />
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={s.aiBtn}
+                onPress={() => navigation.navigate('Chat')}
+                activeOpacity={0.8}
+              >
+                <Icon name="sparkles" size={18} color="#fff" />
+              </TouchableOpacity>
+            </View>
           </View>
+
+          {/* Date navigator */}
+          <Animated.View style={[s.dateNav, { transform: [{ translateX: slideAnim }] }]}>
+            <TouchableOpacity onPress={() => shiftDate(-1)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Icon name="chevron-back" size={20} color="rgba(255,255,255,0.7)" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={s.datePill}
+              onPress={() => setCalendarOpen(true)}
+              activeOpacity={0.8}
+            >
+              <Icon name="calendar-outline" size={14} color="rgba(255,255,255,0.85)" />
+              <Text style={s.dateText}>
+                {isToday
+                  ? 'Vandaag'
+                  : format(selectedDate, 'd MMMM', { locale: nl })}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => shiftDate(1)}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              style={{ opacity: isToday ? 0.3 : 1 }}
+              disabled={isToday}
+            >
+              <Icon name="chevron-forward" size={20} color="rgba(255,255,255,0.7)" />
+            </TouchableOpacity>
+          </Animated.View>
         </Animated.View>
+
+        <CalendarModal
+          visible={calendarOpen}
+          selected={selectedDate}
+          onSelect={d => { setSelectedDate(d); setCalendarOpen(false); }}
+          onClose={() => setCalendarOpen(false)}
+        />
 
         {/* ── Hero calorie card ── */}
         <Animated.View style={[s.heroCard, staggerStyle(anims[1])]}>
@@ -657,7 +770,7 @@ export function DashboardScreen({ navigation }: any) {
               <HealthPill
                 icon="heart"
                 value={`${health.heartRateAvg} bpm`}
-                color="#E05555"
+                color={theme.danger}
                 s={s}
               />
             ) : null}
@@ -665,12 +778,15 @@ export function DashboardScreen({ navigation }: any) {
               <HealthPill
                 icon="moon"
                 value={`${health.sleepHours}u slaap`}
-                color="#7B6FA0"
+                color={theme.primary}
                 s={s}
               />
             ) : null}
           </View>
         )}
+
+        {/* ── Energie check-in ── */}
+        <EnergyCard today={today} />
 
         {/* ── Weekly Report promo ── */}
         <TouchableOpacity
@@ -686,7 +802,9 @@ export function DashboardScreen({ navigation }: any) {
             <Text style={s.reportSub}>Persoonlijke analyse van je week</Text>
           </View>
           <View style={s.reportRight}>
-            <Text style={s.reportEmoji}>📊</Text>
+            <View style={[s.aiBtn, { backgroundColor: theme.primaryLight }]}>
+              <Icon name="bar-chart" size={20} color={theme.primary} />
+            </View>
             <Icon name="chevron-forward" size={16} color={theme.primary} />
           </View>
         </TouchableOpacity>
@@ -694,6 +812,337 @@ export function DashboardScreen({ navigation }: any) {
     </SafeAreaView>
   );
 }
+
+// ─── Calendar Modal ───────────────────────────────────────────────────────────
+
+function CalendarModal({
+  visible,
+  selected,
+  onSelect,
+  onClose,
+}: {
+  visible: boolean;
+  selected: Date;
+  onSelect: (d: Date) => void;
+  onClose: () => void;
+}) {
+  const { theme } = useTheme();
+  const [viewMonth, setViewMonth] = useState(() => {
+    const d = new Date(selected);
+    d.setDate(1);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  });
+
+  useEffect(() => {
+    if (visible) {
+      const d = new Date(selected);
+      d.setDate(1);
+      d.setHours(0, 0, 0, 0);
+      setViewMonth(d);
+    }
+  }, [visible, selected]);
+
+  const days = useMemo(() => {
+    const start = startOfWeek(startOfMonth(viewMonth), { weekStartsOn: 1 });
+    const end = endOfWeek(endOfMonth(viewMonth), { weekStartsOn: 1 });
+    const result: Date[] = [];
+    let cur = start;
+    while (!isAfter(cur, end)) {
+      result.push(new Date(cur));
+      cur = addDays(cur, 1);
+    }
+    return result;
+  }, [viewMonth]);
+
+  const cm = useMemo(() => StyleSheet.create({
+    overlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      justifyContent: 'flex-end',
+    },
+    sheet: {
+      backgroundColor: theme.surface,
+      borderTopLeftRadius: radius.xl + 4,
+      borderTopRightRadius: radius.xl + 4,
+      padding: spacing.lg,
+      paddingBottom: Platform.OS === 'ios' ? 36 : spacing.lg,
+    },
+    handle: {
+      width: 36,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: theme.border,
+      alignSelf: 'center',
+      marginBottom: spacing.md,
+    },
+    monthNav: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: spacing.md,
+    },
+    monthLabel: {
+      fontSize: 18,
+      fontWeight: '900',
+      color: theme.text,
+      letterSpacing: -0.5,
+      textTransform: 'capitalize',
+    },
+    navBtn: {
+      width: 36,
+      height: 36,
+      borderRadius: 12,
+      backgroundColor: theme.surfaceAlt,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    weekRow: {
+      flexDirection: 'row',
+      marginBottom: 6,
+    },
+    weekDay: {
+      flex: 1,
+      textAlign: 'center',
+      fontSize: 11,
+      fontWeight: '700',
+      color: theme.textMuted,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+    },
+    grid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+    },
+    dayCell: {
+      width: `${100 / 7}%` as any,
+      aspectRatio: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    dayInner: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    dayText: {
+      fontSize: 14,
+      fontWeight: '600',
+    },
+  }), [theme]);
+
+  const prevMonth = () => setViewMonth(m => subDays(startOfMonth(m), 1));
+  const nextMonth = () => setViewMonth(m => addDays(endOfMonth(m), 1));
+
+  const WEEK_DAYS = ['Ma', 'Di', 'Wo', 'Do', 'Vr', 'Za', 'Zo'];
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <TouchableOpacity style={cm.overlay} activeOpacity={1} onPress={onClose}>
+        <TouchableOpacity activeOpacity={1} onPress={() => {}}>
+          <View style={cm.sheet}>
+            <View style={cm.handle} />
+
+            <View style={cm.monthNav}>
+              <TouchableOpacity style={cm.navBtn} onPress={prevMonth}>
+                <Icon name="chevron-back" size={18} color={theme.text} />
+              </TouchableOpacity>
+              <Text style={cm.monthLabel}>
+                {format(viewMonth, 'MMMM yyyy', { locale: nl })}
+              </Text>
+              <TouchableOpacity
+                style={[cm.navBtn, { opacity: isSameMonth(viewMonth, todayDate) ? 0.3 : 1 }]}
+                onPress={nextMonth}
+                disabled={isSameMonth(viewMonth, todayDate)}
+              >
+                <Icon name="chevron-forward" size={18} color={theme.text} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={cm.weekRow}>
+              {WEEK_DAYS.map(d => (
+                <Text key={d} style={cm.weekDay}>{d}</Text>
+              ))}
+            </View>
+
+            <View style={cm.grid}>
+              {days.map((day, i) => {
+                const inMonth = isSameMonth(day, viewMonth);
+                const isSelected = isSameDay(day, selected);
+                const isFuture = isAfter(day, todayDate);
+                const isT = isSameDay(day, todayDate);
+
+                return (
+                  <View key={i} style={cm.dayCell}>
+                    <TouchableOpacity
+                      style={[
+                        cm.dayInner,
+                        isSelected && { backgroundColor: theme.primary },
+                        !isSelected && isT && { borderWidth: 2, borderColor: theme.primary },
+                      ]}
+                      onPress={() => !isFuture && inMonth && onSelect(day)}
+                      disabled={isFuture || !inMonth}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[
+                        cm.dayText,
+                        { color: isSelected ? '#fff' : !inMonth || isFuture ? theme.textMuted : theme.text },
+                        isSelected && { fontWeight: '800' },
+                        isT && !isSelected && { color: theme.primary, fontWeight: '800' },
+                      ]}>
+                        {format(day, 'd')}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+        </TouchableOpacity>
+      </TouchableOpacity>
+    </Modal>
+  );
+}
+
+// ─── Energy Card ─────────────────────────────────────────────────────────────
+
+const ENERGY_LEVELS: { level: EnergyLevel; icon: string; label: string; color: string }[] = [
+  { level: 1, icon: 'battery-dead-outline',  label: 'Uitgeput',  color: '#EF4444' },
+  { level: 2, icon: 'battery-half-outline',  label: 'Moe',       color: '#F97316' },
+  { level: 3, icon: 'remove-circle-outline', label: 'Oké',       color: '#FBBF24' },
+  { level: 4, icon: 'sunny-outline',         label: 'Goed',      color: '#84CC16' },
+  { level: 5, icon: 'flash-outline',         label: 'Top!',      color: '#10B981' },
+];
+
+function EnergyCard({ today }: { today: string }) {
+  const { theme } = useTheme();
+  const { data: entry } = useMoodEntry(today);
+  const { data: history = [] } = useMoodHistory(today);
+  const logMood = useLogMood(today);
+
+  const selected = entry?.energy ?? null;
+
+  return (
+    <View style={[ec.card, { backgroundColor: theme.surface, marginHorizontal: spacing.md, ...shadow.md }]}>
+      <View style={ec.header}>
+        <View style={[ec.iconWrap, { backgroundColor: theme.primaryLight }]}>
+          <Icon name="pulse" size={16} color={theme.primary} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={[ec.title, { color: theme.text }]}>Energie vandaag</Text>
+          {selected && (
+            <Text style={[ec.subtitle, { color: theme.textMuted }]}>
+              {ENERGY_LEVELS.find(e => e.level === selected)?.label}
+            </Text>
+          )}
+        </View>
+      </View>
+
+      {/* Knoppen */}
+      <View style={ec.btnRow}>
+        {ENERGY_LEVELS.map(({ level, icon, label, color }) => {
+          const active = selected === level;
+          return (
+            <TouchableOpacity
+              key={level}
+              style={[
+                ec.btn,
+                { borderColor: active ? color : theme.borderLight },
+                active && { backgroundColor: color + '18' },
+              ]}
+              onPress={() => logMood.mutate({ energy: level })}
+              activeOpacity={0.75}
+            >
+              <Icon name={icon} size={22} color={active ? color : theme.textMuted} />
+              <Text style={[ec.btnLabel, { color: active ? color : theme.textMuted }]}>
+                {label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {/* 7-daagse history */}
+      {history.some(Boolean) && (
+        <View style={ec.historyRow}>
+          {history.map((h, i) => {
+            const cfg = h ? ENERGY_LEVELS.find(e => e.level === h.energy) : null;
+            const isToday = i === 6;
+            return (
+              <View key={i} style={ec.historyItem}>
+                <View
+                  style={[
+                    ec.historyDot,
+                    {
+                      backgroundColor: cfg ? cfg.color : theme.borderLight,
+                      width: isToday ? 10 : 8,
+                      height: isToday ? 10 : 8,
+                      borderRadius: isToday ? 5 : 4,
+                      opacity: cfg ? 1 : 0.35,
+                    },
+                  ]}
+                />
+                {isToday && (
+                  <Text style={[ec.historyToday, { color: theme.textMuted }]}>
+                    van.
+                  </Text>
+                )}
+              </View>
+            );
+          })}
+        </View>
+      )}
+    </View>
+  );
+}
+
+const ec = StyleSheet.create({
+  card: {
+    borderRadius: radius.xl,
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: 2,
+  },
+  iconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  title: { fontSize: 15, fontWeight: '800' },
+  subtitle: { fontSize: 12, marginTop: 1 },
+  btnRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  btn: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    gap: 4,
+  },
+  btnLabel: { fontSize: 10, fontWeight: '700' },
+  historyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingTop: 4,
+  },
+  historyItem: { alignItems: 'center', gap: 3 },
+  historyDot: {},
+  historyToday: { fontSize: 9, fontWeight: '600' },
+});
 
 function CalStat({
   label,
