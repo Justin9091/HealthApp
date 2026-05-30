@@ -1,0 +1,23 @@
+name: Create Release Branch
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  create-release-branch:
+    name: Create release branch from tag
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create release branch
+        run: |
+          BRANCH="release/${{ github.ref_name }}"
+          git checkout -b "$BRANCH"
+          git push origin "$BRANCH"
