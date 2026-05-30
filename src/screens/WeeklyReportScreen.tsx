@@ -186,25 +186,25 @@ export function WeeklyReportScreen() {
       const [nutritionDays, fitnessDays, weightEntries] = await Promise.all([
         Promise.all(
           dates.map(async d => {
-            const s = await nutritionService.getSummary(d);
+            const summary = await nutritionService.getSummary(d);
             return {
               date: d,
-              calories: s.totalCalories,
-              protein: s.totalProtein,
-              carbs: s.totalCarbs,
-              fat: s.totalFat,
-              entries: s.entries.length,
+              calories: summary.totalCalories,
+              protein: summary.totalProtein,
+              carbs: summary.totalCarbs,
+              fat: summary.totalFat,
+              entries: summary.entries.length,
             };
           }),
         ),
         Promise.all(
           dates.map(async d => {
-            const s = await fitnessService.getSummary(d);
+            const summary = await fitnessService.getSummary(d);
             return {
               date: d,
-              caloriesBurned: s.totalCaloriesBurned,
-              durationMinutes: s.totalDurationMinutes,
-              workouts: s.workouts.length,
+              caloriesBurned: summary.totalCaloriesBurned,
+              durationMinutes: summary.totalDurationMinutes,
+              workouts: summary.workouts.length,
             };
           }),
         ),
